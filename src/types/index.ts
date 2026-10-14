@@ -56,3 +56,11 @@ export interface FirebaseCustomConfig {
   messagingSenderId: string;
   appId: string;
 }
+
+export interface NewsletterSubscriber {
+  id: string;
+  email: string;
+  subscribedAt: string;
+  source: string;
+  status: 'active' | 'unsubscribed';
+}

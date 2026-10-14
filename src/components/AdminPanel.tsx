@@ -22,9 +22,12 @@ import {
   X,
   RefreshCw,
   Sliders,
-  FolderTree
+  FolderTree,
+  Mail,
+  Copy,
+  Check
 } from 'lucide-react';
-import { NewsArticle } from '../types';
+import { NewsArticle, NewsletterSubscriber } from '../types';
 import { 
   createArticle, 
   updateArticle, 
@@ -44,6 +47,10 @@ import {
   isFirebaseConfigured, 
   DEFAULT_FIREBASE_CONFIG 
 } from '../services/firebaseConfig';
+import { 
+  subscribeToSubscribersList, 
+  deleteSubscriber 
+} from '../services/subscriberService';
 import { CATEGORIES } from '../data/initialNews';
 import { formatBengaliDate, toBengaliDigits } from '../utils/bengaliUtils';
 
@@ -69,7 +76,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onOpenArticle,
 }) => {
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'create' | 'manage' | 'firebase'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'create' | 'manage' | 'subscribers' | 'firebase'>('dashboard');
+  const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
+  const [subscriberSearch, setSubscriberSearch] = useState('');
+  const [copiedSubscribers, setCopiedSubscribers] = useState(false);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('admin@mnhgazipur.com');
@@ -106,10 +116,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [fbSaveSuccess, setFbSaveSuccess] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = subscribeToAuth((user) => {
+    const unsubAuth = subscribeToAuth((user) => {
       setCurrentUser(user);
     });
-    return () => unsubscribe();
+    const unsubSubs = subscribeToSubscribersList((list) => {
+      setSubscribers(list);
+    });
+    return () => {
+      unsubAuth();
+      unsubSubs();
+    };
   }, []);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
@@ -467,6 +483,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('subscribers')}
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-colors w-full text-left whitespace-nowrap ${
+                activeTab === 'subscribers'
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'text-slate-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Mail className="w-4 h-4" />
+              <span>নিউজলেটার গ্রাহক ({toBengaliDigits(subscribers.length)})</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('firebase')}
               className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-colors w-full text-left whitespace-nowrap ${
                 activeTab === 'firebase'
@@ -486,7 +514,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <span>{isFirebaseConfigured() ? 'Firebase Live Connected' : 'লোকাল মেমোরি মোড'}</span>
             </div>
             <p className="text-gray-500 dark:text-gray-400">
-              {isFirebaseConfigured() ? 'Firestore "news_articles" যুক্ত' : 'নিরাপদ অফলাইন ও ব্রাউজার স্টোরেজ চালু'}
+              {isFirebaseConfigured() ? 'Firestore "news_articles" ও "subscribers" সংযুক্ত' : 'নিরাপদ অফলাইন ও ব্রাউজার স্টোরেজ চালু'}
             </p>
           </div>
         </aside>
@@ -506,52 +534,64 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               {/* Statistics Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-gray-500 font-semibold">মোট প্রকাশিত সংবাদ</span>
-                    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+                    <span className="text-xs text-gray-500 font-semibold">মোট সংবাদ</span>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
                       {toBengaliDigits(articles.length)}
                     </div>
                   </div>
-                  <div className="p-3 bg-red-100 dark:bg-red-950/80 text-red-600 rounded-xl">
-                    <FileText className="w-6 h-6" />
+                  <div className="p-2.5 bg-red-100 dark:bg-red-950/80 text-red-600 rounded-xl">
+                    <FileText className="w-5 h-5" />
                   </div>
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-gray-500 font-semibold">প্রধান সংবাদ (Featured)</span>
-                    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+                    <span className="text-xs text-gray-500 font-semibold">প্রধান সংবাদ</span>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
                       {toBengaliDigits(totalFeatured)}
                     </div>
                   </div>
-                  <div className="p-3 bg-amber-100 dark:bg-amber-950/80 text-amber-600 rounded-xl">
-                    <Sparkles className="w-6 h-6" />
+                  <div className="p-2.5 bg-amber-100 dark:bg-amber-950/80 text-amber-600 rounded-xl">
+                    <Sparkles className="w-5 h-5" />
                   </div>
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                   <div>
                     <span className="text-xs text-gray-500 font-semibold">ব্রেকিং নিউজ</span>
-                    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
                       {toBengaliDigits(totalBreaking)}
                     </div>
                   </div>
-                  <div className="p-3 bg-rose-100 dark:bg-rose-950/80 text-rose-600 rounded-xl">
-                    <Flame className="w-6 h-6" />
+                  <div className="p-2.5 bg-rose-100 dark:bg-rose-950/80 text-rose-600 rounded-xl">
+                    <Flame className="w-5 h-5" />
                   </div>
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                   <div>
+                    <span className="text-xs text-gray-500 font-semibold">নিউজলেটার গ্রাহক</span>
+                    <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                      {toBengaliDigits(subscribers.length)}
+                    </div>
+                  </div>
+                  <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 rounded-xl">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center justify-between col-span-2 lg:col-span-1">
+                  <div>
                     <span className="text-xs text-gray-500 font-semibold">মোট পাঠক ভিউ</span>
-                    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
                       {toBengaliDigits(totalViews)}
                     </div>
                   </div>
-                  <div className="p-3 bg-blue-100 dark:bg-blue-950/80 text-blue-600 rounded-xl">
-                    <Eye className="w-6 h-6" />
+                  <div className="p-2.5 bg-blue-100 dark:bg-blue-950/80 text-blue-600 rounded-xl">
+                    <Eye className="w-5 h-5" />
                   </div>
                 </div>
               </div>
@@ -987,7 +1027,131 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          {/* TAB 4: FIREBASE SETUP & CONFIGURATION */}
+          {/* TAB 4: NEWSLETTER SUBSCRIBERS */}
+          {activeTab === 'subscribers' && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              {/* Header & Actions */}
+              <div className="p-5 border-b border-gray-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 rounded-xl">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white font-serif">
+                        দৈনিক নিউজলেটার গ্রাহক তালিকা
+                      </h2>
+                      <p className="text-xs text-gray-500">
+                        Firestore কালেকশন &lsquo;subscribers&rsquo; এ সংরক্ষিত সক্রিয় ইমেইল গ্রাহকবৃন্দ
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => {
+                      const allEmails = subscribers.map(s => s.email).join(', ');
+                      navigator.clipboard.writeText(allEmails);
+                      setCopiedSubscribers(true);
+                      showToast('সকল গ্রাহকের ইমেইল ক্লিপবোর্ডে কপি করা হয়েছে!');
+                      setTimeout(() => setCopiedSubscribers(false), 2000);
+                    }}
+                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    title="সকল ইমেইল কপি করুন"
+                  >
+                    {copiedSubscribers ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedSubscribers ? 'কপি হয়েছে' : 'সব ইমেইল কপি করুন'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter / Search Bar */}
+              <div className="p-4 bg-gray-50/50 dark:bg-slate-800/40 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between gap-3">
+                <div className="relative w-full sm:w-72">
+                  <input
+                    type="text"
+                    placeholder="ইমেইল দিয়ে অনুসন্ধান করুন..."
+                    value={subscriberSearch}
+                    onChange={(e) => setSubscriberSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                  />
+                  <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" />
+                </div>
+
+                <span className="text-xs text-gray-500">
+                  মোট গ্রাহক: <strong className="text-slate-800 dark:text-slate-200 font-mono">{toBengaliDigits(subscribers.length)}</strong> জন
+                </span>
+              </div>
+
+              {/* Subscribers Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 dark:bg-slate-800/80 text-gray-500 uppercase tracking-wider text-[10px] font-bold border-b border-gray-200 dark:border-slate-800">
+                    <tr>
+                      <th className="px-4 py-3">ইমেইল ঠিকানা</th>
+                      <th className="px-4 py-3">নিবন্ধন তারিখ</th>
+                      <th className="px-4 py-3">উৎস (Source)</th>
+                      <th className="px-4 py-3">স্ট্যাটাস</th>
+                      <th className="px-4 py-3 text-right">পদক্ষেপ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                    {subscribers
+                      .filter(s => s.email.toLowerCase().includes(subscriberSearch.toLowerCase()))
+                      .map((sub) => (
+                        <tr key={sub.id} className="hover:bg-gray-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                            <Mail className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                            <span className="font-mono">{sub.email}</span>
+                          </td>
+
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-[11px]">
+                            {formatBengaliDate(sub.subscribedAt)}
+                          </td>
+
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-[11px]">
+                            <span className="bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">
+                              সাইডবার ফর্ম
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              সক্রিয় (Active)
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <button
+                              onClick={async () => {
+                                if (confirm(`"${sub.email}" গ্রাহকটিকে তালিকা থেকে মুছে ফেলতে চান?`)) {
+                                  await deleteSubscriber(sub.id);
+                                  showToast('গ্রাহক মুছে ফেলা হয়েছে!');
+                                }
+                              }}
+                              className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-slate-800 rounded transition-colors"
+                              title="মুছে ফেলুন"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    {subscribers.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                          কোনো গ্রাহক পাওয়া যায়নি
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: FIREBASE SETUP & CONFIGURATION */}
           {activeTab === 'firebase' && (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-5 sm:p-7 shadow-sm max-w-3xl space-y-6">
               <div>

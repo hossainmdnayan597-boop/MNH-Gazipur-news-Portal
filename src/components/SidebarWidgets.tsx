@@ -16,6 +16,7 @@ import {
 import { GAZIPUR_HELPLINES, GAZIPUR_PRAYER_TIMES, INITIAL_POLL } from '../data/initialNews';
 import { toBengaliDigits } from '../utils/bengaliUtils';
 import { ReaderPoll } from '../types';
+import { NewsletterWidget } from './NewsletterWidget';
 
 export const SidebarWidgets: React.FC = () => {
   // Weather state (Gazipur)
@@ -117,7 +118,10 @@ export const SidebarWidgets: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. GAZIPUR EMERGENCY HELPLINE NUMBERS */}
+      {/* 2. DAILY NEWSLETTER SUBSCRIPTION FORM */}
+      <NewsletterWidget />
+
+      {/* 3. GAZIPUR EMERGENCY HELPLINE NUMBERS */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-5 shadow-sm">
         <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
