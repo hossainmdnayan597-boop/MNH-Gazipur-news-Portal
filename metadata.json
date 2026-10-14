@@ -1,0 +1,6 @@
+{
+  "name": "MNH Gazipur News Portal",
+  "description": "গাজীপুরের বিশ্বস্ত সংবাদ মাধ্যম - Live Breaking News, Gazipur Local Updates, Weather, and Admin Management by Md. Nayan Hossen",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
