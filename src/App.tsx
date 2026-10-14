@@ -65,6 +65,68 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Admin open / close handlers with URL syncing
+  const handleOpenAdmin = () => {
+    setIsAdminOpen(true);
+    if (!window.location.pathname.includes('@admin')) {
+      window.history.replaceState(null, '', '/@admin');
+    }
+  };
+
+  const handleCloseAdmin = () => {
+    setIsAdminOpen(false);
+    if (window.location.pathname.includes('@admin') || window.location.hash.includes('@admin')) {
+      const cleanPath = window.location.pathname.replace(/\/@admin\/?/gi, '/') || '/';
+      window.history.replaceState(null, '', cleanPath);
+    }
+  };
+
+  // Secret admin access: /@admin in URL, keyboard shortcut (Ctrl + Shift + A), or hash
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        setIsAdminOpen(prev => {
+          if (!prev) {
+            window.history.replaceState(null, '', '/@admin');
+          } else {
+            window.history.replaceState(null, '', '/');
+          }
+          return !prev;
+        });
+      }
+    };
+
+    const checkAdminTrigger = () => {
+      const path = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+      const search = window.location.search.toLowerCase();
+
+      // Check if /@admin was given in URL path, hash, or search params
+      if (
+        path.includes('/@admin') || 
+        path === '/@admin' ||
+        path.endsWith('@admin') ||
+        hash.includes('@admin') || 
+        hash === '#admin' || 
+        search.includes('@admin') || 
+        search.includes('admin=true')
+      ) {
+        setIsAdminOpen(true);
+      }
+    };
+
+    checkAdminTrigger();
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('hashchange', checkAdminTrigger);
+    window.addEventListener('popstate', checkAdminTrigger);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('hashchange', checkAdminTrigger);
+      window.removeEventListener('popstate', checkAdminTrigger);
+    };
+  }, []);
+
   // Filter articles based on active criteria
   const filteredArticles = articles.filter((article) => {
     // 1. Search filter
@@ -198,7 +260,7 @@ export default function App() {
           setSelectedUpazila(up);
           setCurrentCategory(up);
         }}
-        onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenAdmin={handleOpenAdmin}
       />
 
       {/* 5. Modals */}
@@ -222,9 +284,9 @@ export default function App() {
       {isAdminOpen && (
         <AdminPanel
           articles={articles}
-          onClose={() => setIsAdminOpen(false)}
+          onClose={handleCloseAdmin}
           onOpenArticle={(art) => {
-            setIsAdminOpen(false);
+            handleCloseAdmin();
             setActiveArticle(art);
           }}
         />

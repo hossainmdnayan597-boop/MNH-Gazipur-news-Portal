@@ -1261,7 +1261,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       type="text"
                       value={fbConfig.appId}
                       onChange={(e) => setFbConfig({ ...fbConfig, appId: e.target.value })}
-                      placeholder="1:123456789:web:abcd..."
+                      placeholder="1:455192717010:web:e851e3571bd70bcea2ef0b"
+                      className="w-full px-3 py-2 text-xs font-mono bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                      measurementId
+                    </label>
+                    <input
+                      type="text"
+                      value={fbConfig.measurementId || ''}
+                      onChange={(e) => setFbConfig({ ...fbConfig, measurementId: e.target.value })}
+                      placeholder="G-0CRZJXW7HP"
                       className="w-full px-3 py-2 text-xs font-mono bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
                     />
                   </div>

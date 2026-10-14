@@ -154,16 +154,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
-
-            {/* Admin Panel button */}
-            <button
-              onClick={onOpenAdmin}
-              className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white font-medium px-2 py-0.5 rounded transition-all shadow-sm"
-              title="অ্যাডমিন প্যানেলে প্রবেশ করুন"
-            >
-              <Lock className="w-3 h-3" />
-              <span>অ্যাডমিন</span>
-            </button>
           </div>
         </div>
       </div>
@@ -393,26 +383,16 @@ export const Header: React.FC<HeaderProps> = ({
               ))}
             </div>
 
-            <div className="pt-2 border-t border-red-700 flex gap-2">
-              <button
-                onClick={() => {
-                  onOpenAdmin();
-                  setMobileMenuOpen(false);
-                }}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-slate-900 rounded text-xs font-semibold"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>অ্যাডমিন প্যানেল</span>
-              </button>
+            <div className="pt-2 border-t border-red-700">
               <button
                 onClick={() => {
                   onOpenHelpline();
                   setMobileMenuOpen(false);
                 }}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-amber-600 rounded text-xs font-semibold"
+                className="w-full flex items-center justify-center gap-1.5 py-2 bg-amber-600 hover:bg-amber-700 rounded text-xs font-semibold text-white transition-colors"
               >
                 <PhoneCall className="w-3.5 h-3.5" />
-                <span>জরুরি সেবা</span>
+                <span>গাজীপুর জরুরি সেবা ডিরেক্টরি</span>
               </button>
             </div>
           </div>

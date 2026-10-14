@@ -135,15 +135,6 @@ export const Footer: React.FC<FooterProps> = ({
                 </button>
               ))}
             </div>
-
-            <div className="mt-5 pt-4 border-t border-slate-800">
-              <button
-                onClick={onOpenAdmin}
-                className="w-full py-2 bg-slate-800 hover:bg-red-600 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
-              >
-                <span>অ্যাডমিন ম্যানেজমেন্ট পোর্টাল</span>
-              </button>
-            </div>
           </div>
 
           {/* 4. Editorial & Developer Credit */}
@@ -195,7 +186,14 @@ export const Footer: React.FC<FooterProps> = ({
       <div className="bg-slate-950 py-4 px-4 sm:px-6 border-t border-slate-800/80 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <p>
-            © ২০২৬ <span className="font-bold text-slate-200">MNH Gazipur News Portal</span>. All rights reserved.
+            <span 
+              onClick={onOpenAdmin} 
+              className="cursor-default select-none hover:text-slate-300 transition-colors"
+              title="MNH Gazipur News"
+            >
+              © ২০২৬
+            </span>{' '}
+            <span className="font-bold text-slate-200">MNH Gazipur News Portal</span>. All rights reserved.
           </p>
 
           <p className="flex items-center justify-center gap-1">
