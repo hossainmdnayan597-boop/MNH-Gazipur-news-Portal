@@ -37,7 +37,9 @@ import {
 import { 
   AdminUser, 
   DEFAULT_ADMIN, 
+  SUPER_ADMIN_EMAIL,
   loginAdmin, 
+  loginWithGoogle,
   logoutAdmin, 
   subscribeToAuth 
 } from '../services/authService';
@@ -82,10 +84,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [copiedSubscribers, setCopiedSubscribers] = useState(false);
 
   // Login form state
-  const [loginEmail, setLoginEmail] = useState('admin@mnhgazipur.com');
+  const [loginEmail, setLoginEmail] = useState(SUPER_ADMIN_EMAIL);
   const [loginPassword, setLoginPassword] = useState('admin123456');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState(false);
 
   // Toast / notification banner
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -140,11 +143,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const user = await loginAdmin(loginEmail, loginPassword);
       setCurrentUser(user);
-      showToast('অ্যাডমিন প্যানেলে স্বাগতম, মো. নয়ন হোসেন!');
+      showToast(`স্বাগতম ${user.displayName}! (${user.role})`);
     } catch (err: any) {
       setLoginError(err.message || 'লগইন ব্যর্থ হয়েছে');
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoginError('');
+    setIsGoogleLoggingIn(true);
+    try {
+      const user = await loginWithGoogle();
+      setCurrentUser(user);
+      showToast(`গুগল সাইন-ইন সফল! স্বাগতম ${user.displayName} (${user.role})`);
+    } catch (err: any) {
+      setLoginError(err.message || 'গুগল সাইন-ইন সম্পন্ন করা যায়নি');
+    } finally {
+      setIsGoogleLoggingIn(false);
     }
   };
 
@@ -287,27 +304,68 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </button>
 
           <div className="text-center mb-6">
-            <div className="w-14 h-14 bg-red-600 rounded-2xl flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-red-600/30">
+            <div className="w-14 h-14 bg-gradient-to-tr from-red-700 via-red-600 to-rose-500 rounded-2xl flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-red-600/30">
               <Lock className="w-7 h-7" />
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-serif">
-              MNH Gazipur News Admin
+              News Room CMS
             </h2>
             <p className="text-xs text-gray-500 mt-1">
-              গাজীপুরের বিশ্বস্ত সংবাদ মাধ্যম | অ্যাডমিন প্যানেল লগইন
+              MNH Gazipur News Portal • সেন্ট্রাল কন্ট্রোল প্যানেল
             </p>
+            <div className="inline-block mt-2 px-2.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 text-[11px] font-semibold border border-red-200 dark:border-red-900">
+              Super Admin: {SUPER_ADMIN_EMAIL}
+            </div>
           </div>
 
-          {/* Quick Demo Credentials Box */}
-          <div className="mb-5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-xs">
-            <div className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 mb-1">
-              <ShieldCheck className="w-4 h-4" />
-              <span>এডমিন এক্সেস তথ্য (Md. Nayan Hossen):</span>
+          {/* 1. Google Sign-In Button */}
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={isGoogleLoggingIn}
+              className="w-full py-2.5 px-4 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl border border-gray-300 dark:border-slate-700 shadow-sm transition-all flex items-center justify-center gap-2.5 hover:shadow cursor-pointer"
+            >
+              {isGoogleLoggingIn ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-red-600" />
+                  <span>গুগল যাচাই করা হচ্ছে...</span>
+                </>
+              ) : (
+                <>
+                  {/* Google SVG Logo */}
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                    />
+                  </svg>
+                  <span>Google দিয়ে লগইন করুন</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="relative my-4 text-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200 dark:border-slate-800"></div>
             </div>
-            <div className="text-amber-700 dark:text-amber-400 font-mono space-y-0.5">
-              <div>ইমেইল: <span className="font-bold">admin@mnhgazipur.com</span></div>
-              <div>পাসওয়ার্ড: <span className="font-bold">admin123456</span></div>
-            </div>
+            <span className="relative px-3 bg-white dark:bg-slate-900 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+              অথবা ইউজারনেম / ইমেইল
+            </span>
           </div>
 
           {loginError && (
@@ -317,18 +375,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          {/* 2. Username / Email & Password Form */}
+          <form onSubmit={handleLogin} className="space-y-3.5">
             <div>
               <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                অ্যাডমিন ইমেইল
+                ইউজারনেম বা ইমেইল ঠিকানা
               </label>
               <input
-                type="email"
+                type="text"
                 required
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="admin@mnhgazipur.com"
-                className="w-full px-3.5 py-2.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-900 dark:text-white"
+                placeholder="hossainmdnayan597@gmail.com বা nayan"
+                className="w-full px-3.5 py-2.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-900 dark:text-white font-mono"
               />
             </div>
 
@@ -342,14 +401,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-900 dark:text-white"
+                className="w-full px-3.5 py-2.5 text-xs bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-900 dark:text-white"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-bold text-xs rounded-lg shadow-md transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-bold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               {isLoggingIn ? (
                 <>
@@ -359,11 +418,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>লগইন করুন</span>
+                  <span>News Room CMS-এ প্রবেশ করুন</span>
                 </>
               )}
             </button>
           </form>
+
+          {/* Quick Access Info for Md. Nayan Hossen */}
+          <div className="mt-4 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-800 text-[11px] text-gray-500 text-center">
+            <span>সুপার অ্যাডমিন: </span>
+            <span className="font-bold text-slate-800 dark:text-slate-200">Md. Nayan Hossen</span>
+            <div className="text-[10px] text-red-600 dark:text-red-400 font-mono mt-0.5">
+              {SUPER_ADMIN_EMAIL}
+            </div>
+          </div>
 
           <div className="mt-6 pt-4 border-t border-gray-100 dark:border-slate-800 text-center text-[11px] text-gray-500">
             ডেভেলপার: <span className="font-bold text-slate-700 dark:text-slate-300">Md. Nayan Hossen</span>
@@ -394,13 +462,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
           <div>
             <h1 className="text-base sm:text-lg font-bold flex items-center gap-2">
-              <span>MNH Gazipur News Admin</span>
+              <span>MNH Gazipur News Room CMS</span>
               <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded font-mono">
-                v2.0 PRO
+                CMS PRO
               </span>
             </h1>
             <p className="text-[11px] text-slate-400">
-              গাজীপুরের বিশ্বস্ত সংবাদ মাধ্যম | সেন্ট্রাল কন্ট্রোল ড্যাশবোর্ড
+              গাজীপুরের বিশ্বস্ত সংবাদ মাধ্যম • সেন্ট্রাল কন্ট্রোল ড্যাশবোর্ড
             </p>
           </div>
         </div>
@@ -414,7 +482,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               className="w-8 h-8 rounded-full object-cover border border-slate-700"
             />
             <div className="text-left">
-              <div className="text-xs font-bold text-white">{currentUser.displayName}</div>
+              <div className="text-xs font-bold text-white flex items-center gap-1">
+                <span>{currentUser.displayName}</span>
+                {currentUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() && (
+                  <span className="bg-red-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded">
+                    SUPER ADMIN
+                  </span>
+                )}
+              </div>
               <div className="text-[10px] text-red-400 font-semibold">{currentUser.role}</div>
             </div>
           </div>

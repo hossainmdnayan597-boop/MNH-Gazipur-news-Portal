@@ -65,32 +65,32 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Admin open / close handlers with URL syncing
+  // Admin open / close handlers with URL syncing (#admin & /@admin)
   const handleOpenAdmin = () => {
     setIsAdminOpen(true);
-    if (!window.location.pathname.includes('@admin')) {
-      window.history.replaceState(null, '', '/@admin');
+    if (window.location.hash !== '#admin') {
+      window.location.hash = 'admin';
     }
   };
 
   const handleCloseAdmin = () => {
     setIsAdminOpen(false);
-    if (window.location.pathname.includes('@admin') || window.location.hash.includes('@admin')) {
+    if (window.location.hash.includes('admin') || window.location.pathname.includes('@admin')) {
       const cleanPath = window.location.pathname.replace(/\/@admin\/?/gi, '/') || '/';
       window.history.replaceState(null, '', cleanPath);
     }
   };
 
-  // Secret admin access: /@admin in URL, keyboard shortcut (Ctrl + Shift + A), or hash
+  // Secret admin access: #admin in URL, /@admin, keyboard shortcut (Ctrl + Shift + A), or hash
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
         e.preventDefault();
         setIsAdminOpen(prev => {
           if (!prev) {
-            window.history.replaceState(null, '', '/@admin');
+            window.location.hash = 'admin';
           } else {
-            window.history.replaceState(null, '', '/');
+            handleCloseAdmin();
           }
           return !prev;
         });
@@ -102,13 +102,13 @@ export default function App() {
       const hash = window.location.hash.toLowerCase();
       const search = window.location.search.toLowerCase();
 
-      // Check if /@admin was given in URL path, hash, or search params
+      // Check if #admin, @admin, or /@admin was given in URL
       if (
+        hash === '#admin' ||
+        hash.includes('admin') ||
         path.includes('/@admin') || 
         path === '/@admin' ||
         path.endsWith('@admin') ||
-        hash.includes('@admin') || 
-        hash === '#admin' || 
         search.includes('@admin') || 
         search.includes('admin=true')
       ) {

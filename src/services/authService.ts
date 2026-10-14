@@ -1,5 +1,7 @@
 import { 
   signInWithEmailAndPassword, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
   signOut as fbSignOut, 
   onAuthStateChanged,
   User as FirebaseUser 
@@ -14,9 +16,11 @@ export interface AdminUser {
   avatarUrl: string;
 }
 
+export const SUPER_ADMIN_EMAIL = 'hossainmdnayan597@gmail.com';
+
 export const DEFAULT_ADMIN: AdminUser = {
   uid: 'admin-nayan-01',
-  email: 'admin@mnhgazipur.com',
+  email: SUPER_ADMIN_EMAIL,
   displayName: 'Md. Nayan Hossen',
   role: 'প্রধান সম্পাদক ও প্রকাশক (Super Admin)',
   avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
@@ -44,25 +48,50 @@ export function setLocalAdminSession(user: AdminUser | null) {
   }
 }
 
-export async function loginAdmin(email: string, pass: string): Promise<AdminUser> {
+/**
+ * Determine role based on email address
+ */
+export function getUserRole(email: string): string {
+  const normalized = email.toLowerCase().trim();
+  if (normalized === SUPER_ADMIN_EMAIL.toLowerCase() || normalized === 'admin@mnhgazipur.com') {
+    return 'প্রধান সম্পাদক ও প্রকাশক (Super Admin)';
+  }
+  return 'সম্পাদক (News Editor)';
+}
+
+/**
+ * Login with Email / Username & Password
+ */
+export async function loginAdmin(emailOrUsername: string, pass: string): Promise<AdminUser> {
+  const trimmedInput = emailOrUsername.trim();
+  // Normalize username to email if entered as simple username
+  let targetEmail = trimmedInput;
+  if (trimmedInput === 'nayan' || trimmedInput === 'admin') {
+    targetEmail = SUPER_ADMIN_EMAIL;
+  }
+
   const { auth, isLive } = getFirebaseInstance();
 
   // If live Firebase auth is enabled
   if (isLive && auth) {
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      const cred = await signInWithEmailAndPassword(auth, targetEmail, pass);
+      const isSuper = cred.user.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
       const admin: AdminUser = {
         uid: cred.user.uid,
-        email: cred.user.email || email,
-        displayName: cred.user.displayName || 'Md. Nayan Hossen',
-        role: 'Super Admin',
+        email: cred.user.email || targetEmail,
+        displayName: cred.user.displayName || (isSuper ? 'Md. Nayan Hossen' : 'News Editor'),
+        role: getUserRole(cred.user.email || targetEmail),
         avatarUrl: cred.user.photoURL || DEFAULT_ADMIN.avatarUrl,
       };
       setLocalAdminSession(admin);
       return admin;
     } catch (err: any) {
-      // If Firebase Auth fails with credentials error, throw or allow fallback if using demo credentials
-      if (email === 'admin@mnhgazipur.com' && pass === 'admin123456') {
+      // If Firebase Auth fails with credentials error, allow Super Admin demo bypass if using master credentials
+      if (
+        (targetEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() || targetEmail === 'admin@mnhgazipur.com') &&
+        (pass === 'admin123456' || pass === 'nayan123456' || pass === 'admin123')
+      ) {
         setLocalAdminSession(DEFAULT_ADMIN);
         return DEFAULT_ADMIN;
       }
@@ -71,23 +100,65 @@ export async function loginAdmin(email: string, pass: string): Promise<AdminUser
   }
 
   // Demo / local authentication
-  if (email === 'admin@mnhgazipur.com' && pass === 'admin123456') {
+  if (
+    (targetEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() || targetEmail === 'admin@mnhgazipur.com') &&
+    (pass === 'admin123456' || pass === 'nayan123456' || pass === 'admin123')
+  ) {
     setLocalAdminSession(DEFAULT_ADMIN);
     return DEFAULT_ADMIN;
-  } else if (email && pass.length >= 6) {
-    // Allow custom email with any 6+ digit password for demo flexibility
+  } else if (targetEmail && pass.length >= 6) {
     const customAdmin: AdminUser = {
       uid: 'user-' + Date.now(),
-      email,
-      displayName: 'Md. Nayan Hossen',
-      role: 'সম্পাদক',
+      email: targetEmail,
+      displayName: targetEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() ? 'Md. Nayan Hossen' : 'নিউজ এডিটর',
+      role: getUserRole(targetEmail),
       avatarUrl: DEFAULT_ADMIN.avatarUrl,
     };
     setLocalAdminSession(customAdmin);
     return customAdmin;
   }
 
-  throw new Error('ভুল ইমেইল অথবা পাসওয়ার্ড! (সঠিক তথ্য: admin@mnhgazipur.com / admin123456)');
+  throw new Error('ভুল ইমেইল অথবা পাসওয়ার্ড! (সুপার অ্যাডমিন: hossainmdnayan597@gmail.com / admin123456)');
+}
+
+/**
+ * Google Sign-In with Firebase Auth
+ */
+export async function loginWithGoogle(): Promise<AdminUser> {
+  const { auth, isLive } = getFirebaseInstance();
+
+  if (isLive && auth) {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const cred = await signInWithPopup(auth, provider);
+      
+      const email = cred.user.email || '';
+      const isSuper = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+
+      const admin: AdminUser = {
+        uid: cred.user.uid,
+        email: email,
+        displayName: cred.user.displayName || (isSuper ? 'Md. Nayan Hossen' : 'Google User'),
+        role: getUserRole(email),
+        avatarUrl: cred.user.photoURL || DEFAULT_ADMIN.avatarUrl,
+      };
+
+      setLocalAdminSession(admin);
+      return admin;
+    } catch (err: any) {
+      console.warn('Google popup error, testing fallback if popup was blocked:', err);
+      // If popup was blocked or closed by user in sandbox
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+        throw new Error('গুগল লগইন পপআপ ব্লক করা হয়েছে। অনুগ্রহ করে ব্রাউজারের পপআপ আনব্লক করুন।');
+      }
+      throw new Error(err.message || 'গুগল সাইন-ইন সম্পন্ন করা যায়নি।');
+    }
+  }
+
+  // Fallback demo for preview environment
+  setLocalAdminSession(DEFAULT_ADMIN);
+  return DEFAULT_ADMIN;
 }
 
 export async function logoutAdmin(): Promise<void> {
@@ -108,11 +179,13 @@ export function subscribeToAuth(callback: (user: AdminUser | null) => void): () 
   if (isLive && auth) {
     const unsubscribe = onAuthStateChanged(auth, (fbUser: FirebaseUser | null) => {
       if (fbUser) {
+        const email = fbUser.email || '';
+        const isSuper = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
         const admin: AdminUser = {
           uid: fbUser.uid,
-          email: fbUser.email || '',
-          displayName: fbUser.displayName || 'Md. Nayan Hossen',
-          role: 'Super Admin',
+          email: email,
+          displayName: fbUser.displayName || (isSuper ? 'Md. Nayan Hossen' : 'User'),
+          role: getUserRole(email),
           avatarUrl: fbUser.photoURL || DEFAULT_ADMIN.avatarUrl,
         };
         setLocalAdminSession(admin);
