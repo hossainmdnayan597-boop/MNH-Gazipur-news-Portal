@@ -51,12 +51,27 @@ export function saveLocalArticles(articles: NewsArticle[]) {
 export function subscribeToArticles(callback: (articles: NewsArticle[]) => void): () => void {
   const { db, isLive } = getFirebaseInstance();
 
+  const handleLocalUpdate = (e: any) => {
+    if (e?.detail && Array.isArray(e.detail)) {
+      callback(e.detail);
+    } else {
+      callback(getLocalArticles());
+    }
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('mnh_articles_updated', handleLocalUpdate);
+    window.addEventListener('storage', handleLocalUpdate);
+  }
+
+  let firestoreUnsubscribe: (() => void) | null = null;
+
   if (isLive && db) {
     try {
       const newsCollection = collection(db, 'news_articles');
       const q = query(newsCollection, orderBy('createdAt', 'desc'));
 
-      const unsubscribe = onSnapshot(
+      firestoreUnsubscribe = onSnapshot(
         q,
         (snapshot) => {
           if (!snapshot.empty) {
@@ -79,6 +94,8 @@ export function subscribeToArticles(callback: (articles: NewsArticle[]) => void)
                 readingTimeMinutes: data.readingTimeMinutes || Math.max(1, Math.ceil((data.content || '').split(' ').length / 180)),
               };
             });
+            // Update local cache with remote documents
+            saveLocalArticles(articles);
             callback(articles);
           } else {
             // Firestore is empty; fallback to local articles for preview
@@ -91,29 +108,21 @@ export function subscribeToArticles(callback: (articles: NewsArticle[]) => void)
           callback(getLocalArticles());
         }
       );
-
-      return unsubscribe;
     } catch (err) {
       console.warn('Failed to start Firestore listener:', err);
     }
+  } else {
+    callback(getLocalArticles());
   }
 
-  // Local fallback
-  const emitLocal = () => {
-    callback(getLocalArticles());
-  };
-  emitLocal();
-
-  const handleUpdate = () => {
-    emitLocal();
-  };
-
-  window.addEventListener('mnh_articles_updated', handleUpdate);
-  window.addEventListener('storage', handleUpdate);
-
   return () => {
-    window.removeEventListener('mnh_articles_updated', handleUpdate);
-    window.removeEventListener('storage', handleUpdate);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('mnh_articles_updated', handleLocalUpdate);
+      window.removeEventListener('storage', handleLocalUpdate);
+    }
+    if (firestoreUnsubscribe) {
+      firestoreUnsubscribe();
+    }
   };
 }
 
@@ -183,13 +192,12 @@ export async function deleteArticle(id: string): Promise<void> {
     try {
       const docRef = doc(db, 'news_articles', id);
       await deleteDoc(docRef);
-      return;
     } catch (err) {
-      console.error('Firestore delete error, deleting locally:', err);
+      console.warn('Firestore delete note (updating local store as well):', err);
     }
   }
 
-  // Local Store
+  // Always update local cache and dispatch reactive event
   const localArticles = getLocalArticles();
   const updated = localArticles.filter(a => a.id !== id);
   saveLocalArticles(updated);

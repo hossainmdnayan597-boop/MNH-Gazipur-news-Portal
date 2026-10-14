@@ -41,11 +41,34 @@ export function getLocalAdminSession(): AdminUser | null {
 }
 
 export function setLocalAdminSession(user: AdminUser | null) {
-  if (user) {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-  } else {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+  try {
+    if (user) {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+  } catch (e) {
+    console.error('Failed updating local session', e);
   }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('mnh_auth_updated', { detail: user }));
+  }
+}
+
+/**
+ * Check if a user is the Super Admin (Md. Nayan Hossen)
+ */
+export function isUserSuperAdmin(user?: AdminUser | null): boolean {
+  const target = user !== undefined ? user : getLocalAdminSession();
+  if (!target) return false;
+  const email = (target.email || '').toLowerCase().trim();
+  const superEmail = SUPER_ADMIN_EMAIL.toLowerCase().trim();
+  return (
+    email === superEmail ||
+    email === 'admin@mnhgazipur.com' ||
+    (target.role || '').toLowerCase().includes('super admin') ||
+    (target.displayName || '').toLowerCase().includes('nayan')
+  );
 }
 
 /**
@@ -176,8 +199,19 @@ export async function logoutAdmin(): Promise<void> {
 export function subscribeToAuth(callback: (user: AdminUser | null) => void): () => void {
   const { auth, isLive } = getFirebaseInstance();
 
+  const handleUpdate = () => {
+    callback(getLocalAdminSession());
+  };
+
+  // Listen to local session changes
+  if (typeof window !== 'undefined') {
+    window.addEventListener('mnh_auth_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+  }
+
+  let fbUnsubscribe: (() => void) | null = null;
   if (isLive && auth) {
-    const unsubscribe = onAuthStateChanged(auth, (fbUser: FirebaseUser | null) => {
+    fbUnsubscribe = onAuthStateChanged(auth, (fbUser: FirebaseUser | null) => {
       if (fbUser) {
         const email = fbUser.email || '';
         const isSuper = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
@@ -195,11 +229,18 @@ export function subscribeToAuth(callback: (user: AdminUser | null) => void): () 
         callback(local);
       }
     });
-    return unsubscribe;
+  } else {
+    // Initial emission
+    callback(getLocalAdminSession());
   }
 
-  // Local listener
-  const initial = getLocalAdminSession();
-  callback(initial);
-  return () => {};
+  return () => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('mnh_auth_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    }
+    if (fbUnsubscribe) {
+      fbUnsubscribe();
+    }
+  };
 }

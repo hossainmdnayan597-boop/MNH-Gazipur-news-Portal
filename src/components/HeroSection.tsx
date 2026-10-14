@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
-import { Clock, Eye, Flame, TrendingUp, Sparkles, Share2 } from 'lucide-react';
+import { Clock, Eye, Flame, TrendingUp, Sparkles, Share2, Trash2 } from 'lucide-react';
 import { NewsArticle } from '../types';
 import { formatBengaliDate, getRelativeBengaliTime, toBengaliDigits } from '../utils/bengaliUtils';
 
 interface HeroSectionProps {
   articles: NewsArticle[];
   onOpenArticle: (article: NewsArticle) => void;
+  isSuperAdmin?: boolean;
+  onRequestDelete?: (article: NewsArticle) => void;
 }
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ articles, onOpenArticle }) => {
+export const HeroSection: React.FC<HeroSectionProps> = ({ 
+  articles, 
+  onOpenArticle,
+  isSuperAdmin = false,
+  onRequestDelete,
+}) => {
   const [activeTab, setActiveTab] = useState<'latest' | 'popular'>('latest');
 
   // Featured lead article
@@ -59,6 +66,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ articles, onOpenArticl
                 </span>
               </div>
 
+              {/* Super Admin Quick Delete Button on Lead Story */}
+              {isSuperAdmin && onRequestDelete && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRequestDelete(leadArticle);
+                  }}
+                  className="absolute top-4 right-4 z-10 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-2xl flex items-center gap-1.5 cursor-pointer transition-all border border-red-400"
+                  title="সুপার অ্যাডমিন: প্রধান সংবাদটি মুছে ফেলুন (Delete)"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>সংবাদ মুছুন</span>
+                </button>
+              )}
+
               {/* Lead Headline on bottom overlay */}
               <div className="absolute bottom-4 left-4 right-4 text-white">
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold leading-tight mb-2 group-hover:text-red-400 transition-colors font-serif">
@@ -102,6 +125,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ articles, onOpenArticl
                     <span className="absolute bottom-2 left-2 bg-red-600 text-white text-[11px] font-semibold px-2 py-0.5 rounded shadow">
                       {article.category}
                     </span>
+
+                    {/* Super Admin Quick Delete Button on Sub-lead */}
+                    {isSuperAdmin && onRequestDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRequestDelete(article);
+                        }}
+                        className="absolute top-2 right-2 z-10 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs px-2.5 py-1 rounded-lg shadow-xl flex items-center gap-1 cursor-pointer transition-all border border-red-400"
+                        title="সুপার অ্যাডমিন: সংবাদটি মুছে ফেলুন (Delete)"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>মুছুন</span>
+                      </button>
+                    )}
                   </div>
                   <div className="p-4">
                     <h3 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors line-clamp-2 leading-snug">
@@ -115,10 +154,26 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ articles, onOpenArticl
 
                 <div className="px-4 pb-4 pt-1 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-slate-800/80">
                   <span className="truncate">{article.reporter}</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-red-500" />
-                    {getRelativeBengaliTime(article.createdAt)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-red-500" />
+                      {getRelativeBengaliTime(article.createdAt)}
+                    </span>
+                    {isSuperAdmin && onRequestDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRequestDelete(article);
+                        }}
+                        className="px-1.5 py-0.5 rounded bg-red-100 hover:bg-red-600 hover:text-white dark:bg-red-950/70 text-red-600 dark:text-red-300 font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+                        title="মুছে ফেলুন"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>মুছুন</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -199,12 +254,28 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ articles, onOpenArticl
                   )}
                 </div>
 
-                {/* Micro Thumbnail */}
-                <img
-                  src={item.imageUrl}
-                  alt={item.title}
-                  className="w-16 h-14 object-cover rounded-md flex-shrink-0"
-                />
+                {/* Micro Thumbnail & Delete button */}
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <img
+                    src={item.imageUrl}
+                    alt={item.title}
+                    className="w-16 h-14 object-cover rounded-md"
+                  />
+                  {isSuperAdmin && onRequestDelete && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRequestDelete(item);
+                      }}
+                      className="text-[10px] text-red-600 hover:text-white hover:bg-red-600 px-1.5 py-0.5 rounded bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 font-bold transition-all flex items-center gap-0.5 cursor-pointer"
+                      title="মুছে ফেলুন"
+                    >
+                      <Trash2 className="w-2.5 h-2.5" />
+                      <span>মুছুন</span>
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

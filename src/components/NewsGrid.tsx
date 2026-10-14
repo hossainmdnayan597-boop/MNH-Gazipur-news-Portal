@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Eye, Share2, Bookmark, Check, Sparkles, AlertCircle, ArrowUpDown } from 'lucide-react';
+import { Clock, Eye, Share2, Bookmark, Check, Sparkles, AlertCircle, ArrowUpDown, Trash2, ShieldCheck } from 'lucide-react';
 import { NewsArticle } from '../types';
 import { formatBengaliDate, getRelativeBengaliTime, toBengaliDigits } from '../utils/bengaliUtils';
 
@@ -8,6 +8,8 @@ interface NewsGridProps {
   onOpenArticle: (article: NewsArticle) => void;
   currentCategory: string;
   onResetFilters: () => void;
+  isSuperAdmin?: boolean;
+  onRequestDelete?: (article: NewsArticle) => void;
 }
 
 export const NewsGrid: React.FC<NewsGridProps> = ({
@@ -15,6 +17,8 @@ export const NewsGrid: React.FC<NewsGridProps> = ({
   onOpenArticle,
   currentCategory,
   onResetFilters,
+  isSuperAdmin = false,
+  onRequestDelete,
 }) => {
   const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -134,11 +138,27 @@ export const NewsGrid: React.FC<NewsGridProps> = ({
                       {article.category}
                     </span>
 
-                    {/* Breaking / Featured label */}
-                    {article.isBreaking && (
+                    {/* Breaking label */}
+                    {article.isBreaking && !isSuperAdmin && (
                       <span className="absolute top-3 right-3 bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded shadow uppercase">
                         ব্রেকিং
                       </span>
+                    )}
+
+                    {/* Super Admin Quick Delete Button on Card */}
+                    {isSuperAdmin && onRequestDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRequestDelete(article);
+                        }}
+                        className="absolute top-3 right-3 z-10 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs px-2.5 py-1 rounded-lg shadow-xl flex items-center gap-1 cursor-pointer transition-all border border-red-400"
+                        title="সুপার অ্যাডমিন: সংবাদটি মুছে ফেলুন (Delete)"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>মুছুন</span>
+                      </button>
                     )}
 
                     {/* Bookmark quick icon */}
@@ -180,7 +200,23 @@ export const NewsGrid: React.FC<NewsGridProps> = ({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    {/* Super Admin Footer Delete Action */}
+                    {isSuperAdmin && onRequestDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRequestDelete(article);
+                        }}
+                        className="px-2 py-0.5 rounded bg-red-100 hover:bg-red-600 hover:text-white dark:bg-red-950/70 text-red-600 dark:text-red-300 font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer border border-red-200 dark:border-red-900/60"
+                        title="সুপার অ্যাডমিন: সংবাদটি মুছে ফেলুন"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>মুছুন</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={(e) => handleShare(e, article)}
                       className="p-1 hover:text-red-600 transition-colors"

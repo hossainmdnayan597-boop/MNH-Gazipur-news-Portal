@@ -14,17 +14,23 @@ import {
   ChevronRight,
   Sparkles,
   MapPin,
-  Tag
+  Tag,
+  Trash2,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { NewsArticle } from '../types';
 import { formatBengaliDateTime, getRelativeBengaliTime, toBengaliDigits } from '../utils/bengaliUtils';
-import { incrementArticleViews } from '../services/newsService';
+import { incrementArticleViews, deleteArticle } from '../services/newsService';
+import { getLocalAdminSession, SUPER_ADMIN_EMAIL, isUserSuperAdmin } from '../services/authService';
 
 interface NewsDetailModalProps {
   article: NewsArticle | null;
   onClose: () => void;
   allArticles: NewsArticle[];
   onSelectArticle: (article: NewsArticle) => void;
+  isSuperAdmin?: boolean;
+  onRequestDelete?: (article: NewsArticle) => void;
 }
 
 export const NewsDetailModal: React.FC<NewsDetailModalProps> = ({
@@ -32,6 +38,8 @@ export const NewsDetailModal: React.FC<NewsDetailModalProps> = ({
   onClose,
   allArticles,
   onSelectArticle,
+  isSuperAdmin: propIsSuperAdmin,
+  onRequestDelete,
 }) => {
   const [fontSizeLevel, setFontSizeLevel] = useState<'normal' | 'large' | 'xlarge'>('normal');
   const [copied, setCopied] = useState(false);
@@ -136,6 +144,20 @@ export const NewsDetailModal: React.FC<NewsDetailModalProps> = ({
     }
   };
 
+  const isSuperAdmin = propIsSuperAdmin !== undefined ? propIsSuperAdmin : isUserSuperAdmin();
+
+  const handleDeleteFromModal = async () => {
+    if (!article) return;
+    if (onRequestDelete) {
+      onRequestDelete(article);
+      return;
+    }
+    if (confirm(`আপনি কি নিশ্চিত যে "${article.title}" সংবাদটি স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+      await deleteArticle(article.id);
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fadeIn">
       <div 
@@ -203,6 +225,19 @@ export const NewsDetailModal: React.FC<NewsDetailModalProps> = ({
             >
               <Printer className="w-4 h-4" />
             </button>
+
+            {/* Super Admin Quick Delete Button */}
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={handleDeleteFromModal}
+                className="p-1.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md border border-red-500/60"
+                title="সুপার অ্যাডমিন: সংবাদটি মুছে ফেলুন (Delete)"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>সংবাদ মুছুন</span>
+              </button>
+            )}
 
             {/* Close */}
             <button
@@ -320,6 +355,35 @@ export const NewsDetailModal: React.FC<NewsDetailModalProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Super Admin Dedicated Delete Panel */}
+          {isSuperAdmin && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/40 dark:to-slate-900 border border-red-200 dark:border-red-900/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white flex-shrink-0 shadow-md shadow-red-600/30">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-red-900 dark:text-red-200 flex items-center gap-1.5">
+                    <span>সুপার অ্যাডমিন নিয়ন্ত্রণ ({SUPER_ADMIN_EMAIL})</span>
+                    <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.2 rounded font-mono">SUPER ADMIN</span>
+                  </div>
+                  <p className="text-[11px] text-red-700 dark:text-red-400 mt-0.5">
+                    আপনি পোর্টালের প্রধান সম্পাদক হিসেবে এই সংবাদটি স্থায়ীভাবে ডাটাবেজ থেকে মুছে ফেলতে পারবেন।
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDeleteFromModal}
+                className="w-full sm:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer flex-shrink-0"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>সংবাদটি স্থায়ীভাবে মুছুন (Delete)</span>
+              </button>
+            </div>
+          )}
 
           {/* Related Articles Section */}
           {relatedArticles.length > 0 && (

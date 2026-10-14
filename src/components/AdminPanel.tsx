@@ -260,9 +260,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!articleToDelete) return;
     try {
       await deleteArticle(articleToDelete.id);
-      showToast('সংবাদ মুছে ফেলা হয়েছে!');
+      showToast('সংবাদটি সফলভাবে মুছে ফেলা হয়েছে!');
+      if (editingArticleId === articleToDelete.id) {
+        resetForm();
+      }
       setArticleToDelete(null);
     } catch (err) {
+      console.error(err);
       showToast('মুছতে সমস্যা হয়েছে', 'error');
     }
   };
@@ -707,17 +711,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <button
                           onClick={() => handleEditClick(a)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded"
-                          title="সম্পাদনা"
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded transition-colors"
+                          title="সম্পাদনা করুন"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => onOpenArticle(a)}
-                          className="p-1.5 text-slate-600 hover:bg-gray-100 dark:hover:bg-slate-800 rounded"
+                          className="p-1.5 text-slate-600 hover:bg-gray-100 dark:hover:bg-slate-800 rounded transition-colors"
                           title="সংবাদ প্রিভিউ"
                         >
                           <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setArticleToDelete(a)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-slate-800 rounded transition-colors"
+                          title="মুছে ফেলুন (Delete)"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -962,10 +973,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="px-4 py-2.5 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl transition-colors"
+                    className="px-4 py-2.5 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
                   >
                     রিসেট
                   </button>
+
+                  {editingArticleId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = articles.find(a => a.id === editingArticleId);
+                        if (target) {
+                          setArticleToDelete(target);
+                        }
+                      }}
+                      className="px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-950/70 dark:hover:bg-red-900/80 dark:text-red-300 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 ml-auto cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>সংবাদটি মুছে ফেলুন (Delete)</span>
+                    </button>
+                  )}
                 </div>
               </form>
             </div>
@@ -1071,27 +1098,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           {toBengaliDigits(article.views)}
                         </td>
 
-                        <td className="px-4 py-3 whitespace-nowrap text-right space-x-1">
+                        <td className="px-4 py-3 whitespace-nowrap text-right space-x-1.5">
                           <button
                             onClick={() => onOpenArticle(article)}
-                            className="p-1.5 text-slate-600 hover:text-red-600 rounded hover:bg-gray-100 dark:hover:bg-slate-800"
+                            className="p-1.5 text-slate-600 hover:text-slate-900 dark:hover:text-white rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
                             title="প্রিভিউ দেখুন"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleEditClick(article)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded"
+                            className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-slate-800 rounded transition-colors"
                             title="সম্পাদনা করুন"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setArticleToDelete(article)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-slate-800 rounded"
-                            title="মুছে ফেলুন"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-red-600 hover:text-white hover:bg-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-md font-bold text-[11px] transition-all cursor-pointer shadow-xs"
+                            title="সংবাদটি মুছে ফেলুন (Delete)"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
+                            <span>মুছুন</span>
                           </button>
                         </td>
                       </tr>
@@ -1384,8 +1412,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* Delete Confirmation Modal */}
       {articleToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-6 text-center border border-gray-200 dark:border-slate-800 shadow-2xl">
+        <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-6 text-center border border-gray-200 dark:border-slate-800 shadow-2xl relative">
+            <button
+              onClick={() => setArticleToDelete(null)}
+              className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 hover:text-gray-600 cursor-pointer"
+              title="বাতিল করুন"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
             <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/80 text-red-600 flex items-center justify-center mx-auto mb-3">
               <Trash2 className="w-6 h-6" />
             </div>
@@ -1393,20 +1429,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               সংবাদটি মুছে ফেলতে চান?
             </h3>
             <p className="text-xs text-gray-500 mb-4 line-clamp-2">
-              &ldquo;{articleToDelete.title}&rdquo; সংবাদটি মুছে ফেললে তা পোর্টাল থেকে স্থায়ীভাবে অপসারণ করা হবে।
+              &ldquo;{articleToDelete.title}&rdquo; সংবাদটি মুছে ফেললে তা পোর্টাল ও ডাটাবেজ থেকে স্থায়ীভাবে অপসারণ করা হবে।
             </p>
             <div className="flex items-center justify-center gap-2">
               <button
+                type="button"
                 onClick={() => setArticleToDelete(null)}
-                className="px-4 py-2 bg-gray-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
+                className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl cursor-pointer"
               >
-                বাতিল
+                না, বাতিল
               </button>
               <button
+                type="button"
                 onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shadow"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow cursor-pointer"
               >
-                হ্যাঁ, মুছে ফেলুন
+                হ্যাঁ, নিশ্চিত মুছুন
               </button>
             </div>
           </div>
